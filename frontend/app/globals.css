@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #0b0b0d; /* near-black, no red tint */
+  /* one very faint red glow in the top-left corner */
+  background-image: radial-gradient(45rem 30rem at 0% 0%, rgba(185, 28, 28, 0.10), transparent 60%);
+  background-attachment: fixed;
+  color: #ededed;
+}
+
+@layer components {
+  /* Neutral dark glass: used for most panels */
+  .glass {
+    @apply bg-white/[0.04] backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)];
+  }
+  /* Red glass: only for the user's messages */
+  .glass-red {
+    background-image: linear-gradient(135deg, rgba(185, 28, 28, 0.30), rgba(69, 10, 10, 0.40));
+    @apply backdrop-blur-xl border border-red-500/40;
+  }
+  /* Primary red button */
+  .btn-red {
+    @apply rounded-xl border border-red-500/50 bg-gradient-to-br from-red-700 to-red-950 text-white transition hover:brightness-125 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-40;
+  }
+}
