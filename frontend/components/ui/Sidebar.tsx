@@ -1,12 +1,24 @@
 "use client";
 import { useRef } from "react";
-import { FileText, Lock, UploadCloud } from "lucide-react";
+import { FileText, Lock, Trash2, UploadCloud } from "lucide-react";
 
-export type UploadedDoc = { name: string; status: "uploading" | "done" | "error" };
+export type UploadedDoc = {
+  key: string;
+  id?: number; // set once the server has saved it
+  name: string;
+  status: "uploading" | "done" | "error";
+  detail?: string; // error message or "12 chunks"
+};
 
-type Props = { docs: UploadedDoc[]; onUpload: (files: FileList) => void; locked: boolean; onSignIn: () => void };
+type Props = {
+  docs: UploadedDoc[];
+  onUpload: (files: FileList) => void;
+  onDelete: (doc: UploadedDoc) => void;
+  locked: boolean;
+  onSignIn: () => void;
+};
 
-export default function Sidebar({ docs, onUpload, locked, onSignIn }: Props) {
+export default function Sidebar({ docs, onUpload, onDelete, locked, onSignIn }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -32,26 +44,46 @@ export default function Sidebar({ docs, onUpload, locked, onSignIn }: Props) {
           >
             <UploadCloud className="h-6 w-6 text-gray-300" />
             Upload files
+            <span className="text-xs text-gray-500">PDF, DOCX, TXT, MD · up to 10 MB</span>
           </button>
           <input
             ref={inputRef}
             type="file"
             multiple
             hidden
-            onChange={(e) => e.target.files && onUpload(e.target.files)}
+            accept=".pdf,.docx,.txt,.md"
+            onChange={(e) => {
+              if (e.target.files) onUpload(e.target.files);
+              e.target.value = ""; // lets the same file be chosen again
+            }}
           />
           <ul className="mt-4 flex-1 space-y-2 overflow-y-auto">
             {docs.length === 0 && <li className="text-sm text-gray-500">No documents yet.</li>}
-            {docs.map((d, i) => (
-              <li
-                key={`${d.name}-${i}`}
-                className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm"
-              >
-                <FileText className="h-4 w-4 shrink-0 text-gray-400" />
-                <span className="truncate">{d.name}</span>
-                <span className={`ml-auto text-xs ${d.status === "error" ? "text-red-400" : "text-gray-400"}`}>
-                  {d.status === "uploading" ? "Uploading…" : d.status === "done" ? "Ready" : "Failed"}
-                </span>
+            {docs.map((d) => (
+              <li key={d.key} className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-4 w-4 shrink-0 text-gray-400" />
+                  <span className="truncate">{d.name}</span>
+                  {d.status === "done" && d.id !== undefined ? (
+                    <button
+                      onClick={() => onDelete(d)}
+                      aria-label={`Delete ${d.name}`}
+                      title="Delete"
+                      className="ml-auto text-gray-500 transition hover:text-red-400"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <span className={`ml-auto shrink-0 text-xs ${d.status === "error" ? "text-red-400" : "text-gray-400"}`}>
+                      {d.status === "uploading" ? "Processing…" : "Failed"}
+                    </span>
+                  )}
+                </div>
+                {d.detail && (
+                  <p className={`mt-1 pl-7 text-xs ${d.status === "error" ? "text-red-400" : "text-gray-500"}`}>
+                    {d.detail}
+                  </p>
+                )}
               </li>
             ))}
           </ul>

@@ -9,17 +9,24 @@ from app.api import chat, routes
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
-from app.models import user_model  # noqa: F401  (registers tables on Base.metadata)
+from app.models import document_model, user_model  # noqa: F401  (registers tables on Base.metadata)
+
+TABLES = ("users", "documents", "document_chunks")
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    """On startup: enable pgvector and create tables. Failures are printed, not fatal,
-    so /api/v1/chat still works while you sort out database access."""
+    """On startup: enable pgvector, create tables, and lock them from Supabase's public REST API.
+    Failures are printed, not fatal, so plain chat still works while you sort out database access."""
     try:
         async with engine.begin() as conn:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             await conn.run_sync(Base.metadata.create_all)
+            # Row Level Security with no policies: the public API key cannot read these tables.
+            # This backend connects as the database owner, which is not affected.
+            for table in TABLES:
+                await conn.execute(text(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY"))
+        print("[startup] Database ready (pgvector + tables)")
     except Exception as exc:
         print(f"[startup] Database init skipped: {exc}")
     yield
@@ -27,11 +34,11 @@ async def lifespan(_: FastAPI):
 
 
 def get_application() -> FastAPI:
-    app = FastAPI(title=settings.PROJECT_NAME, version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title=settings.PROJECT_NAME, version="0.2.0", lifespan=lifespan)
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS,  # http://localhost:3000
+        allow_origins=settings.CORS_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
