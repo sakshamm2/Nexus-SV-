@@ -9,7 +9,8 @@ export default function ChatWindow({ messages, loading }: { messages: Message[];
   const endRef = useRef<HTMLDivElement>(null);
   // Keep the newest message in view
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
+    // jump while text is streaming in (smooth scrolling would lag behind), glide otherwise
+    endRef.current?.scrollIntoView({ behavior: loading ? "auto" : "smooth" });
   }, [messages, loading]);
 
   if (messages.length === 0) {
@@ -59,7 +60,10 @@ export default function ChatWindow({ messages, loading }: { messages: Message[];
           </div>
         </div>
       ))}
-      {loading && <div className="text-sm text-fuchsia-300/70">Nexus is thinking…</div>}
+      {/* only until the first words of the reply arrive */}
+      {loading && messages[messages.length - 1]?.role === "user" && (
+        <div className="text-sm text-fuchsia-300/70">Nexus is thinking…</div>
+      )}
       <div ref={endRef} />
     </div>
   );

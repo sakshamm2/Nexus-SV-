@@ -49,7 +49,7 @@ async def list_documents(user: dict = Depends(get_current_user), db: AsyncSessio
             select(Document).where(Document.user_id == user["id"]).order_by(Document.created_at.desc())
         )
         return list(rows)
-    except SQLAlchemyError as exc:
+    except (SQLAlchemyError, OSError) as exc:
         raise _db_down(exc) from exc
 
 
@@ -68,7 +68,7 @@ async def upload_document(
 
     try:
         count = await db.scalar(select(func.count()).select_from(Document).where(Document.user_id == user["id"]))
-    except SQLAlchemyError as exc:
+    except (SQLAlchemyError, OSError) as exc:
         raise _db_down(exc) from exc
     if (count or 0) >= settings.MAX_DOCS_PER_USER:
         raise HTTPException(status_code=409, detail=f"Document limit reached ({settings.MAX_DOCS_PER_USER}). Delete one first.")
@@ -106,7 +106,7 @@ async def upload_document(
         )
         await db.commit()
         await db.refresh(doc)
-    except SQLAlchemyError as exc:
+    except (SQLAlchemyError, OSError) as exc:
         await db.rollback()
         raise _db_down(exc) from exc
     return doc
@@ -117,7 +117,7 @@ async def delete_document(doc_id: int, user: dict = Depends(get_current_user), d
     try:
         result = await db.execute(delete(Document).where(Document.id == doc_id, Document.user_id == user["id"]))
         await db.commit()  # chunks are removed automatically (ON DELETE CASCADE)
-    except SQLAlchemyError as exc:
+    except (SQLAlchemyError, OSError) as exc:
         await db.rollback()
         raise _db_down(exc) from exc
     if result.rowcount == 0:

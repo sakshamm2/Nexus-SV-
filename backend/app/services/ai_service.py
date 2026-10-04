@@ -17,6 +17,13 @@ class AIService:
         response = await self.client.aio.models.generate_content(model=self.model, contents=prompt)
         return response.text or ""
 
+    async def stream_response(self, prompt: str):
+        """Yield the reply piece by piece as Gemini writes it."""
+        stream = await self.client.aio.models.generate_content_stream(model=self.model, contents=prompt)
+        async for chunk in stream:
+            if chunk.text:
+                yield chunk.text
+
     async def embed_texts(self, texts: list[str], task_type: str) -> list[list[float]]:
         """Turn texts into vectors. task_type: RETRIEVAL_DOCUMENT for stored chunks,
         RETRIEVAL_QUERY for the user's question."""

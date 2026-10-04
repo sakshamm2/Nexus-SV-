@@ -5,13 +5,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.api import chat, routes
+from app.api import chat, conversations, routes
 from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
-from app.models import document_model, user_model  # noqa: F401  (registers tables on Base.metadata)
+from app.models import chat_model, document_model, user_model  # noqa: F401  (registers tables on Base.metadata)
 
-TABLES = ("users", "documents", "document_chunks")
+TABLES = ("users", "documents", "document_chunks", "conversations", "messages")
 
 
 @asynccontextmanager
@@ -22,6 +22,14 @@ async def lifespan(_: FastAPI):
         async with engine.begin() as conn:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
             await conn.run_sync(Base.metadata.create_all)
+            # Keyword search support: an auto-maintained searchable-text column plus an index
+            await conn.execute(text(
+                "ALTER TABLE document_chunks ADD COLUMN IF NOT EXISTS content_tsv tsvector "
+                "GENERATED ALWAYS AS (to_tsvector('english', content)) STORED"
+            ))
+            await conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS document_chunks_tsv_idx ON document_chunks USING gin (content_tsv)"
+            ))
             # Row Level Security with no policies: the public API key cannot read these tables.
             # This backend connects as the database owner, which is not affected.
             for table in TABLES:
@@ -34,7 +42,7 @@ async def lifespan(_: FastAPI):
 
 
 def get_application() -> FastAPI:
-    app = FastAPI(title=settings.PROJECT_NAME, version="0.2.0", lifespan=lifespan)
+    app = FastAPI(title=settings.PROJECT_NAME, version="0.3.0", lifespan=lifespan)
 
     app.add_middleware(
         CORSMiddleware,
@@ -45,6 +53,7 @@ def get_application() -> FastAPI:
     )
 
     app.include_router(chat.router, prefix=settings.API_V1_PREFIX, tags=["chat"])
+    app.include_router(conversations.router, prefix=settings.API_V1_PREFIX, tags=["chats"])
     app.include_router(routes.router, prefix=settings.API_V1_PREFIX, tags=["system"])
     return app
 

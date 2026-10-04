@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     MAX_CHUNKS_PER_DOC: int = 400
     RETRIEVAL_TOP_K: int = 5
     RETRIEVAL_MAX_DISTANCE: float = 0.65  # cosine distance; lower = stricter. Tune if sources look wrong.
+    RETRIEVAL_CANDIDATES: int = 20    # how many hits each search (meaning + keyword) contributes before merging
+    HISTORY_MESSAGES: int = 6         # how many earlier messages the chatbot remembers
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
