@@ -12,7 +12,8 @@ class Settings(BaseSettings):
     SUPABASE_URL: str
     SUPABASE_ANON_KEY: str
 
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL: str = "gemini-3.8-flash"
+    GEMINI_FALLBACK_MODEL: str = "gemini-3.5-flash-lite"  # tried if the main model stays overloaded; "" turns it off
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
     # --- Documents / RAG ---
