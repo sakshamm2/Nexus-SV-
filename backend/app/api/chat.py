@@ -18,7 +18,7 @@ from app.core.config import settings
 from app.core.security import get_optional_user
 from app.db.session import AsyncSessionLocal, get_db
 from app.models.chat_model import Conversation, Message
-from app.services.ai_service import ai_service
+from app.services.ai_service import ai_service, friendly_error
 from app.services.document_service import build_prompt, retrieve
 
 router = APIRouter()
@@ -168,7 +168,8 @@ async def chat(
     try:
         reply = await ai_service.generate_response(prep.prompt)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"AI service error: {exc}") from exc
+        log.warning("Gemini failed: %s", exc)
+        raise HTTPException(status_code=502, detail=friendly_error(exc)) from exc
     await finish(prep, reply)
     return ChatResponse(
         reply=reply, sources=[Source(**s) for s in prep.sources], conversation_id=prep.conversation_id
@@ -192,7 +193,8 @@ async def chat_stream(
                 parts.append(piece)
                 yield sse("token", {"text": piece})
         except Exception as exc:  # the response has started, so errors travel as an event
-            yield sse("error", {"detail": f"AI service error: {exc}"})
+            log.warning("Gemini failed: %s", exc)
+            yield sse("error", {"detail": friendly_error(exc)})
             return
         reply = "".join(parts)
         if not reply.strip():
